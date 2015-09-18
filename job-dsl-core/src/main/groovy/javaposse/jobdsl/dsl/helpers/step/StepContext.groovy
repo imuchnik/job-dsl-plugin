@@ -392,6 +392,11 @@ class StepContext extends AbstractExtensibleContext {
                     settingsConfigId(mavenContext.providedSettingsId)
                 }
             }
+            if (mavenContext.providedGlobalSettingsId) {
+                globalSettings(class: 'org.jenkinsci.plugins.configfiles.maven.job.MvnGlobalSettingsProvider') {
+                    settingsConfigId(mavenContext.providedGlobalSettingsId)
+                }
+            }
         }
 
         if (mavenContext.configureBlock) {
@@ -610,7 +615,7 @@ class StepContext extends AbstractExtensibleContext {
         ContextHelper.executeInContext(downstreamClosure, downstreamContext)
 
         stepNodes << new NodeBuilder().'hudson.plugins.parameterizedtrigger.TriggerBuilder' {
-          configs(downstreamContext.configs)
+            configs(downstreamContext.configs)
         }
     }
 
@@ -775,22 +780,32 @@ class StepContext extends AbstractExtensibleContext {
     @RequiresPlugin(id = 'vsphere-cloud')
     void vSpherePowerOff(String server, String vm) {
         vSphereBuildStep(server, 'PowerOff') {
-            delegate.vm vm
-            evenIfSuspended false
-            shutdownGracefully false
+            delegate.vm(vm)
+            evenIfSuspended(false)
+            shutdownGracefully(false)
         }
     }
 
     /**
-     * This build step will power on the specified VM.
+     * This build step will power on the specified VM. Uses a default timeout of 180 seconds.
      *
      * @since 1.25
      */
     @RequiresPlugin(id = 'vsphere-cloud')
     void vSpherePowerOn(String server, String vm) {
+        vSpherePowerOn(server, vm, 180)
+    }
+
+    /**
+     * This build step will power on the specified VM. The timeout must be specified in seconds.
+     *
+     * @since 1.39
+     */
+    @RequiresPlugin(id = 'vsphere-cloud')
+    void vSpherePowerOn(String server, String vm, int timeout) {
         vSphereBuildStep(server, 'PowerOn') {
-            delegate.vm vm
-            timeoutInSeconds 180
+            delegate.vm(vm)
+            timeoutInSeconds(timeout)
         }
     }
 
@@ -802,8 +817,8 @@ class StepContext extends AbstractExtensibleContext {
     @RequiresPlugin(id = 'vsphere-cloud')
     void vSphereRevertToSnapshot(String server, String vm, String snapshot) {
         vSphereBuildStep(server, 'RevertToSnapshot') {
-            delegate.vm vm
-            snapshotName snapshot
+            delegate.vm(vm)
+            snapshotName(snapshot)
         }
     }
 
@@ -813,8 +828,8 @@ class StepContext extends AbstractExtensibleContext {
 
         stepNodes << new NodeBuilder().'org.jenkinsci.plugins.vsphere.VSphereBuildStepContainer' {
             buildStep(class: "org.jenkinsci.plugins.vsphere.builders.${builder}", configuration)
-            serverName server
-            serverHash hash
+            serverName(server)
+            serverHash(hash)
         }
     }
 
@@ -945,6 +960,46 @@ class StepContext extends AbstractExtensibleContext {
             nature(context.nature)
             command(context.command ?: '')
             ignoreExitCode(context.ignoreExitCode)
+        }
+    }
+
+    /**
+     * Builds and pushes a Docker based project to the Docker registry.
+     *
+     * @since 1.39
+     */
+    @RequiresPlugin(id = 'docker-build-publish', minimumVersion = '1.0')
+    void dockerBuildAndPublish(@DslContext(DockerBuildAndPublishContext) Closure closure) {
+        DockerBuildAndPublishContext context = new DockerBuildAndPublishContext()
+        ContextHelper.executeInContext(closure, context)
+
+        stepNodes << new NodeBuilder().'com.cloudbees.dockerpublish.DockerBuilder' {
+            server {
+                if (context.dockerHostURI) {
+                    uri(context.dockerHostURI)
+                }
+                if (context.serverCredentials) {
+                    credentialsId(context.serverCredentials)
+                }
+            }
+            registry {
+                if (context.dockerRegistryURL) {
+                    url(context.dockerRegistryURL)
+                }
+                if (context.registryCredentials) {
+                    credentialsId(context.registryCredentials)
+                }
+            }
+            repoName(context.repositoryName ?: '')
+            noCache(context.noCache)
+            forcePull(context.forcePull)
+            dockerfilePath(context.dockerfileDirectory ?: '')
+            skipBuild(context.skipBuild)
+            skipDecorate(context.skipDecorate)
+            repoTag(context.tag ?: '')
+            skipPush(context.skipPush)
+            createFingerprint(context.createFingerprints)
+            skipTagLatest(context.skipTagAsLatest)
         }
     }
 

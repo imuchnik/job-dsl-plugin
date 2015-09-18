@@ -682,7 +682,7 @@ class PublisherContext extends AbstractExtensibleContext {
      */
     @RequiresPlugin(id = 'description-setter')
     void buildDescription(String regularExpression, String description = '', String regularExpressionForFailed = '',
-                         String descriptionForFailed = '', boolean multiConfigurationBuild = false) {
+                          String descriptionForFailed = '', boolean multiConfigurationBuild = false) {
         publisherNodes << new NodeBuilder().'hudson.plugins.descriptionsetter.DescriptionSetterPublisher' {
             regexp(regularExpression)
             regexpForFailed(regularExpressionForFailed)
@@ -703,7 +703,7 @@ class PublisherContext extends AbstractExtensibleContext {
      */
     @RequiresPlugin(id = 'text-finder')
     void textFinder(String regularExpression, String fileSet = '', boolean alsoCheckConsoleOutput = false,
-                   boolean succeedIfFound = false, unstableIfFound = false) {
+                    boolean succeedIfFound = false, unstableIfFound = false) {
         publisherNodes << new NodeBuilder().'hudson.plugins.textfinder.TextFinderPublisher' {
             if (fileSet) {
                 delegate.fileSet(fileSet)
@@ -799,10 +799,10 @@ class PublisherContext extends AbstractExtensibleContext {
             if (jobManagement.getPluginVersion('groovy-postbuild')?.isOlderThan(new VersionNumber('2.2'))) {
                 groovyScript(groovyPostbuildContext.script ?: '')
             } else {
-              script {
-                script(groovyPostbuildContext.script ?: '')
-                sandbox(groovyPostbuildContext.sandbox)
-              }
+                script {
+                    script(groovyPostbuildContext.script ?: '')
+                    sandbox(groovyPostbuildContext.sandbox)
+                }
             }
             behavior(groovyPostbuildContext.behavior.value)
         }
@@ -1202,9 +1202,12 @@ class PublisherContext extends AbstractExtensibleContext {
      *
      * @since 1.20
      */
+    @Deprecated
     @RequiresPlugin(id = 'jshint-checkstyle')
     void jshint(String pattern,
                 @DslContext(StaticAnalysisContext) Closure staticAnalysisClosure = null) {
+        jobManagement.logDeprecationWarning()
+
         publisherNodes << createDefaultStaticAnalysisNode(
                 'hudson.plugins.jshint.CheckStylePublisher',
                 staticAnalysisClosure,
@@ -1306,11 +1309,11 @@ class PublisherContext extends AbstractExtensibleContext {
     void warnings(List consoleParsers, Map parserConfigurations = [:],
                   @DslContext(WarningsContext) Closure warningsClosure = null) {
         WarningsContext warningsContext = new WarningsContext()
-        ContextHelper.executeInContext(warningsClosure,  warningsContext)
+        ContextHelper.executeInContext(warningsClosure, warningsContext)
 
         NodeBuilder nodeBuilder = new NodeBuilder()
         publisherNodes << nodeBuilder.'hudson.plugins.warnings.WarningsPublisher' {
-            addStaticAnalysisContext(delegate,  warningsContext)
+            addStaticAnalysisContext(delegate, warningsContext)
             includePattern(warningsContext.includePattern)
             excludePattern(warningsContext.excludePattern)
             nodeBuilder.consoleParsers {
@@ -1339,7 +1342,7 @@ class PublisherContext extends AbstractExtensibleContext {
     @RequiresPlugin(id = 'analysis-collector')
     void analysisCollector(@DslContext(AnalysisCollectorContext) Closure analysisCollectorClosure = null) {
         AnalysisCollectorContext analysisCollectorContext = new AnalysisCollectorContext()
-        ContextHelper.executeInContext(analysisCollectorClosure,  analysisCollectorContext)
+        ContextHelper.executeInContext(analysisCollectorClosure, analysisCollectorContext)
 
         publisherNodes << new NodeBuilder().'hudson.plugins.analysis.collector.AnalysisPublisher' {
             addStaticAnalysisContext(delegate, analysisCollectorContext)

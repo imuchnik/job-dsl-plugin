@@ -254,12 +254,12 @@ class StepContextSpec extends Specification {
             useWrapper true
             grailsWorkDir 'work'
             projectWorkDir 'project'
-            projectBaseDir  'base'
-            serverPort  '1111'
-            props  prop1: 'val1', prop2: 'val2'
+            projectBaseDir 'base'
+            serverPort '1111'
+            props prop1: 'val1', prop2: 'val2'
             prop 'prop3', 'val3'
-            forceUpgrade  true
-            nonInteractive  false
+            forceUpgrade true
+            nonInteractive false
         }
 
         then:
@@ -282,10 +282,10 @@ class StepContextSpec extends Specification {
             useWrapper true
             grailsWorkDir 'work'
             projectWorkDir 'project'
-            projectBaseDir  'base'
-            serverPort  '8080'
-            forceUpgrade  true
-            nonInteractive  false
+            projectBaseDir 'base'
+            serverPort '8080'
+            forceUpgrade true
+            nonInteractive false
         }
 
         then:
@@ -430,15 +430,33 @@ class StepContextSpec extends Specification {
         e.message.contains(settingsName)
     }
 
+    def 'call maven method with unknown provided global settings'() {
+        setup:
+        String settingsName = 'lalala'
+
+        when:
+        context.maven {
+            providedGlobalSettings(settingsName)
+        }
+
+        then:
+        Exception e = thrown(DslScriptException)
+        e.message.contains(settingsName)
+    }
+
     def 'call maven method with provided settings'() {
         setup:
         String settingsName = 'maven-proxy'
         String settingsId = '123123415'
+        String globalSettingsName = 'maven-global'
+        String globalSettingsId = '123123416'
         jobManagement.getConfigFileId(ConfigFileType.MavenSettings, settingsName) >> settingsId
+        jobManagement.getConfigFileId(ConfigFileType.GlobalMavenSettings, globalSettingsName) >> globalSettingsId
 
         when:
         context.maven {
             providedSettings(settingsName)
+            providedGlobalSettings(globalSettingsName)
         }
 
         then:
@@ -446,14 +464,21 @@ class StepContextSpec extends Specification {
         context.stepNodes.size() == 1
         with(context.stepNodes[0]) {
             name() == 'hudson.tasks.Maven'
-            children().size() == 5
+            children().size() == 6
             targets[0].value() == ''
             jvmOptions[0].value() == ''
             usePrivateRepository[0].value() == false
             mavenName[0].value() == '(Default)'
-            settings[0].attribute('class') == 'org.jenkinsci.plugins.configfiles.maven.job.MvnSettingsProvider'
-            settings[0].children().size() == 1
-            settings[0].settingsConfigId[0].value() == settingsId
+            with(settings[0]) {
+                attribute('class') == 'org.jenkinsci.plugins.configfiles.maven.job.MvnSettingsProvider'
+                children().size() == 1
+                settingsConfigId[0].value() == settingsId
+            }
+            with(globalSettings[0]) {
+                attribute('class') == 'org.jenkinsci.plugins.configfiles.maven.job.MvnGlobalSettingsProvider'
+                children().size() == 1
+                settingsConfigId[0].value() == globalSettingsId
+            }
         }
         1 * jobManagement.requirePlugin('maven-plugin')
     }
@@ -1008,7 +1033,7 @@ class StepContextSpec extends Specification {
         1 * jobManagement.requirePlugin('repository-connector')
     }
 
-    def 'call resolveArtifacts with all arguments and two artifacts' () {
+    def 'call resolveArtifacts with all arguments and two artifacts'() {
         when:
         context.resolveArtifacts {
             failOnError()
@@ -1415,12 +1440,12 @@ class StepContextSpec extends Specification {
                 with(delegate.delegate[0]) {
                     with(publishers[0]) {
                         children().size() == 1
-                        with (delegate.'jenkins.plugins.publish__over__ssh.BapSshPublisher'[0]) {
+                        with(delegate.'jenkins.plugins.publish__over__ssh.BapSshPublisher'[0]) {
                             configName[0].value() == 'server-name'
                             verbose[0].value() == false
                             with(transfers[0]) {
                                 children().size() == 1
-                                with (delegate.'jenkins.plugins.publish__over__ssh.BapSshTransfer'[0]) {
+                                with(delegate.'jenkins.plugins.publish__over__ssh.BapSshTransfer'[0]) {
                                     remoteDirectory[0].value() == ''
                                     sourceFiles[0].value() == 'file'
                                     excludes[0].value() == ''
@@ -1631,9 +1656,9 @@ class StepContextSpec extends Specification {
                     'label=="${TARGET}"'
             configs[0].'hudson.plugins.parameterizedtrigger.SubversionRevisionBuildParameters'[0] instanceof Node
             configs[0].'org.jvnet.jenkins.plugins.nodelabelparameter.parameterizedtrigger.NodeLabelBuildParameter'[0].
-                name[0].value() == 'nodeParam'
+                    name[0].value() == 'nodeParam'
             configs[0].'org.jvnet.jenkins.plugins.nodelabelparameter.parameterizedtrigger.NodeLabelBuildParameter'[0].
-                nodeLabel[0].value() == 'node_label'
+                    nodeLabel[0].value() == 'node_label'
 
             block.size() == 1
             Node thresholds = block[0]
@@ -1915,10 +1940,10 @@ class StepContextSpec extends Specification {
 
         where:
         threshold  || ordinalValue | colorValue
-        'never'    || null         | null
-        'SUCCESS'  || 0            | 'BLUE'
-        'UNSTABLE' || 1            | 'YELLOW'
-        'FAILURE'  || 2            | 'RED'
+        'never'    || null | null
+        'SUCCESS'  || 0 | 'BLUE'
+        'UNSTABLE' || 1 | 'YELLOW'
+        'FAILURE'  || 2 | 'RED'
     }
 
     def 'call downstream build step with invalid blocking options'() {
@@ -2111,7 +2136,7 @@ class StepContextSpec extends Specification {
         Node notCondition = step.runCondition[0]
         notCondition.attribute('class') == 'org.jenkins_ci.plugins.run_condition.logic.Not'
         Node matchCondition = notCondition.condition[0]
-        matchCondition.attribute('class') ==  'org.jenkins_ci.plugins.run_condition.core.StringsMatchCondition'
+        matchCondition.attribute('class') == 'org.jenkins_ci.plugins.run_condition.core.StringsMatchCondition'
         matchCondition.arg1[0].value() == 'foo'
         matchCondition.arg2[0].value() == 'bar'
         matchCondition.ignoreCase[0].value() == 'false'
@@ -2803,6 +2828,28 @@ class StepContextSpec extends Specification {
             serverName[0].value() == 'vsphere.acme.org'
             serverHash[0].value() == 4711
         }
+        (1.._) * jobManagement.requirePlugin('vsphere-cloud')
+    }
+
+    def 'vSphere power on with timeout'() {
+        setup:
+        jobManagement.getVSphereCloudHash('vsphere.acme.org') >> 4711
+
+        when:
+        context.vSpherePowerOn('vsphere.acme.org', 'foo', 300)
+
+        then:
+        context.stepNodes.size() == 1
+        with(context.stepNodes[0]) {
+            name() == 'org.jenkinsci.plugins.vsphere.VSphereBuildStepContainer'
+            children().size() == 3
+            buildStep[0].attribute('class') == 'org.jenkinsci.plugins.vsphere.builders.PowerOn'
+            buildStep[0].children().size() == 2
+            buildStep[0].vm[0].value() == 'foo'
+            buildStep[0].timeoutInSeconds[0].value() == 300
+            serverName[0].value() == 'vsphere.acme.org'
+            serverHash[0].value() == 4711
+        }
         1 * jobManagement.requirePlugin('vsphere-cloud')
     }
 
@@ -3119,5 +3166,75 @@ class StepContextSpec extends Specification {
             systemSitePackages[0].value() == true
         }
         1 * jobManagement.requireMinimumPluginVersion('shiningpanda', '0.21')
+    }
+
+    def 'call dockerBuildAndPublish with no options'() {
+        when:
+        context.dockerBuildAndPublish {
+        }
+
+        then:
+        context.stepNodes.size() == 1
+        with(context.stepNodes[0]) {
+            name() == 'com.cloudbees.dockerpublish.DockerBuilder'
+            children().size() == 12
+            server[0].value().empty
+            registry[0].value().empty
+            repoName[0].value().empty
+            noCache[0].value() == false
+            forcePull[0].value() == true
+            dockerfilePath[0].value().empty
+            skipBuild[0].value() == false
+            skipDecorate[0].value() == false
+            repoTag[0].value().empty
+            skipPush[0].value() == false
+            createFingerprint[0].value() == true
+            skipTagLatest[0].value() == false
+        }
+        1 * jobManagement.requireMinimumPluginVersion('docker-build-publish', '1.0')
+    }
+
+    def 'call dockerBuildAndPublish with all options'() {
+        when:
+        context.dockerBuildAndPublish {
+            repositoryName('test1')
+            tag('test2')
+            dockerHostURI('test3')
+            serverCredentials('test4')
+            dockerRegistryURL('test5')
+            registryCredentials('test6')
+            skipPush()
+            noCache()
+            forcePull(false)
+            skipBuild()
+            createFingerprints(false)
+            skipDecorate()
+            skipTagAsLatest()
+            dockerfileDirectory('test7')
+        }
+
+        then:
+        context.stepNodes.size() == 1
+        with(context.stepNodes[0]) {
+            name() == 'com.cloudbees.dockerpublish.DockerBuilder'
+            children().size() == 12
+            server[0].children().size() == 2
+            server[0].uri[0].value() == 'test3'
+            server[0].credentialsId[0].value() == 'test4'
+            registry[0].children().size() == 2
+            registry[0].url[0].value() == 'test5'
+            registry[0].credentialsId[0].value() == 'test6'
+            repoName[0].value() == 'test1'
+            noCache[0].value() == true
+            forcePull[0].value() == false
+            dockerfilePath[0].value() == 'test7'
+            skipBuild[0].value() == true
+            skipDecorate[0].value() == true
+            repoTag[0].value() == 'test2'
+            skipPush[0].value() == true
+            createFingerprint[0].value() == false
+            skipTagLatest[0].value() == true
+        }
+        1 * jobManagement.requireMinimumPluginVersion('docker-build-publish', '1.0')
     }
 }
