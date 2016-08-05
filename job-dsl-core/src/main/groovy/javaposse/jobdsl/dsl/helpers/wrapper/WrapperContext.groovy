@@ -621,6 +621,7 @@ class WrapperContext extends AbstractExtensibleContext {
             options(context.options ?: '')
             verboseLogging(context.verboseLogging)
             condition(class: 'org.jenkins_ci.plugins.run_condition.core.AlwaysRun')
+            credentialId(context.credentialId)
         }
     }
 }

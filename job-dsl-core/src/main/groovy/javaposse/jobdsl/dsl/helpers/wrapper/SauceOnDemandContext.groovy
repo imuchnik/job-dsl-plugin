@@ -14,6 +14,7 @@ class SauceOnDemandContext implements Context {
     String seleniumHost
     String seleniumPort
     String options
+    String credentialId
     List<String> webDriverBrowsers = []
     List<String> appiumBrowsers = []
 
@@ -109,5 +110,12 @@ class SauceOnDemandContext implements Context {
      */
     void useGeneratedTunnelIdentifier(boolean useGeneratedTunnelIdentifier = true) {
         this.useGeneratedTunnelIdentifier = useGeneratedTunnelIdentifier
+    }
+
+    /**
+     * Specifies the credential id as provided by credentials plugin. Must be provided to successfully start the tunnel.
+     */
+    void credentialId(String credentialId) {
+        this.credentialId = credentialId
     }
 }
